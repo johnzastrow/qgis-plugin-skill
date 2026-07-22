@@ -1,0 +1,146 @@
+# Release workflow for THIS repository (the skill itself).
+#
+# Not to be confused with skills/qgis-plugin/templates/release.yml, which is the
+# template consumers copy into their own QGIS *plugin* repos. This one ships the
+# skill; that one ships a plugin.
+#
+# On a v* tag: verify the tooling still works, check the tag agrees with the
+# version recorded in the repo, build the Claude-Desktop-installable skill zip,
+# verify that artifact, and cut the GitHub Release with the CHANGELOG section as
+# the release notes.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:        # lets you dry-run everything except the release step
+
+permissions:
+  contents: write           # needed to create the Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      # --- the skill preaches these gates, so it runs them on itself ---------
+      - name: Shellcheck the shipped scripts
+        run: shellcheck -S warning skills/qgis-plugin/scripts/*.sh tests/*.sh
+
+      - name: Lint the Python builder
+        run: |
+          uv run --no-project --with ruff ruff check skills/qgis-plugin/scripts/build_plugin.py
+          uv run --no-project --with flake8 flake8 --max-line-length=120 \
+            skills/qgis-plugin/scripts/build_plugin.py
+
+      - name: Security scan
+        run: uv run --no-project --with bandit bandit -q -r skills/
+
+      # The build tooling is the part most likely to rot. This builds a
+      # synthetic plugin with both builders and asserts every failure mode is
+      # still rejected.
+      - name: Build-tooling regression suite
+        run: bash tests/smoke_build.sh
+
+      # --- the `make tag` discipline: refuse to release on disagreement ------
+      # On a tag, the tag must agree with marketplace.json and CHANGELOG.md.
+      # On a manual workflow_dispatch there is no tag, so this becomes a dry run
+      # that takes the version from marketplace.json and skips the agreement
+      # check (the release step is tag-gated too).
+      - name: Check the tag agrees with the repo
+        id: v
+        run: |
+          set -euo pipefail
+          MP=$(python3 -c "import json;print(json.load(open('.claude-plugin/marketplace.json'))['metadata']['version'])")
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#v}"
+            if [ "$MP" != "$VERSION" ]; then
+              echo "::error::marketplace.json version is $MP but the tag is $TAG"
+              exit 1
+            fi
+            if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+              echo "::error::CHANGELOG.md has no '## [$VERSION]' section"
+              exit 1
+            fi
+            echo "tag $TAG agrees with marketplace.json and CHANGELOG.md"
+          else
+            VERSION="$MP"
+            echo "::notice::dry run on ${GITHUB_REF_NAME} - no release will be created"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Validate skill metadata
+        run: |
+          set -euo pipefail
+          python3 -c "import json;json.load(open('.claude-plugin/marketplace.json'))"
+          uv run --no-project --with pyyaml python -c "
+          import re, sys, yaml, pathlib
+          for d in pathlib.Path('skills').iterdir():
+              t = (d / 'SKILL.md').read_text()
+              m = re.match(r'^---\n(.*?)\n---\n', t, re.S)
+              assert m, f'{d}: no YAML frontmatter'
+              fm = yaml.safe_load(m.group(1))
+              assert fm.get('name') == d.name, f\"{d}: frontmatter name {fm.get('name')!r} != dir name\"
+              assert fm.get('description'), f'{d}: no description'
+              print(f'{d.name}: frontmatter OK ({len(fm[\"description\"])} char description)')
+          "
+
+      # --- build the installable artifact -----------------------------------
+      # git archive so the zip contains only tracked files at exactly the tagged
+      # state - no local caches, no untracked strays.
+      - name: Build skill zip
+        id: art
+        run: |
+          set -euo pipefail
+          ZIP="qgis-plugin-${{ steps.v.outputs.version }}.zip"
+          git archive --format=zip --prefix=qgis-plugin/ \
+            "${GITHUB_REF_NAME}:skills/qgis-plugin" -o "$ZIP"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the artifact
+        run: |
+          set -euo pipefail
+          ZIP="${{ steps.art.outputs.zip }}"
+          unzip -l "$ZIP"
+          TOPS=$(unzip -Z1 "$ZIP" | cut -d/ -f1 | sort -u)
+          test "$TOPS" = "qgis-plugin" || { echo "::error::expected one top folder"; exit 1; }
+          unzip -Z1 "$ZIP" | grep -q '^qgis-plugin/SKILL.md$' \
+            || { echo "::error::SKILL.md missing from the zip"; exit 1; }
+          test "$(unzip -Z1 "$ZIP" | grep -ciE '__pycache__|\.git|\.pyc')" = "0" \
+            || { echo "::error::junk in the zip"; exit 1; }
+          echo "artifact verified"
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          python3 - "${{ steps.v.outputs.version }}" > NOTES.md <<'PY'
+          import re, sys
+          version = sys.argv[1]
+          text = open('CHANGELOG.md').read()
+          m = re.search(rf'^## \[{re.escape(version)}\].*?$(.*?)(?=^## \[|\Z)',
+                        text, re.S | re.M)
+          body = (m.group(1).strip() if m else '')
+          print(body if body else f'Release {version}.')
+          PY
+          cat NOTES.md
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "${{ steps.art.outputs.zip }}" \
+            --title "${GITHUB_REF_NAME} - qgis-plugin skill" \
+            --notes-file NOTES.md \
+            --latest

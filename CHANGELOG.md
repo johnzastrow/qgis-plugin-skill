@@ -6,6 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- `.github/workflows/release.yml` — this repository's own release automation. On a `v*` tag it
+  runs the gates, refuses to proceed unless the tag agrees with `marketplace.json` and
+  `CHANGELOG.md`, builds the Claude-Desktop-installable skill zip, verifies that artifact, and
+  cuts the GitHub Release using the CHANGELOG section as the notes. A manual
+  `workflow_dispatch` runs everything except the release step as a dry run. Distinct from
+  `skills/qgis-plugin/templates/release.yml`, which is the template for consumers' *plugin* repos.
+- `tests/smoke_build.sh` — regression guard for the build tooling. Builds a synthetic plugin with
+  both builders, asserts they emit identical file sets, and asserts every failure mode is still
+  rejected (shell script, compiled binary, path traversal, unsafe `PLUGIN`, missing LICENSE,
+  unshipped `VERIFY` entry, nonexistent file) plus that the `ALLOW_SHELL_SCRIPTS` override still
+  works. Verified to have teeth by mutation testing: removing a check turns it red.
+
 ## [1.0.1] - 2026-07-22
 
 ### Changed
