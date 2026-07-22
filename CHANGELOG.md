@@ -19,6 +19,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   unshipped `VERIFY` entry, nonexistent file) plus that the `ALLOW_SHELL_SCRIPTS` override still
   works. Verified to have teeth by mutation testing: removing a check turns it red.
 
+### Changed
+- Bumped the pinned GitHub Actions in both the repo's own workflow and
+  `templates/release.yml` (`checkout` v4 to v7, `setup-python` v5 to v7, `setup-uv` v5 to v9).
+  The v4/v5 pins target Node 20, which GitHub has deprecated and now force-runs on Node 24 —
+  a warning the template would otherwise propagate to everyone who copies it. Also disabled
+  uv's cache in both, since with no lockfile to key on it would never invalidate.
+
 ## [1.0.1] - 2026-07-22
 
 ### Changed
