@@ -1,0 +1,21 @@
+# ruff configuration - the fast local mirror of setup.cfg's flake8 rules.
+#
+# Deliberately does NOT list E12x / W50x: ruff has no such codes, and listing
+# them in extend-ignore is an error. flake8 remains authoritative (setup.cfg).
+#
+# Pin ruff to the same version your CI uses, or `ruff format --check` will
+# disagree between your machine and CI:
+#   uvx --from ruff==0.15.19 ruff format .
+
+line-length = 120
+preview = true
+extend-exclude = ["test", "tests", "help", "i18n", "docs", "resources.py"]
+
+[lint]
+select = ["E", "F", "W"]
+extend-ignore = ["E501", "E203", "E741"]
+
+[lint.per-file-ignores]
+# Only if you still use a side-effect star import, e.g. `from .resources import *`.
+# Better: drop compiled resources entirely and load icons from a file path.
+# "myplugin.py" = ["F403"]

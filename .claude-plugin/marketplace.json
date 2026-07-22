@@ -1,0 +1,22 @@
+{
+  "name": "qgis-plugin-skill",
+  "owner": {
+    "name": "John Zastrow",
+    "email": "johnzastrow@users.noreply.github.com"
+  },
+  "metadata": {
+    "description": "A battle-tested skill for authoring, debugging, packaging and publishing QGIS Python plugins.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "qgis-plugin",
+      "description": "Author, debug, package and publish QGIS (3.x/4.x, PyQt5/PyQt6) Python plugins: dock/UI patterns, the runtime crash pitfalls that segfault QGIS, Qt5-to-Qt6 migration, the plugins.qgis.org security gates, a self-verifying manifest-driven build, local-deploy testing and the release flow.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/qgis-plugin"
+      ]
+    }
+  ]
+}
