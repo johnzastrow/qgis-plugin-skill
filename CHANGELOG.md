@@ -6,6 +6,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-22
+
+### Changed
+- `templates/release.yml` now carries the ruff version in a single `RUFF_VERSION` workflow
+  env var instead of hardcoding it in the lint step. The pin is still exact — a newer ruff
+  formats differently and fails a `ruff format --check` that passed locally — but it is now
+  an obvious knob to set rather than a buried value that reads as a recommendation.
+  `templates/ruff.toml` and the publishing playbook point at that one location.
+
 ## [1.0.0] - 2026-07-22
 
 First public release. Extracted from a personal Claude configuration and made

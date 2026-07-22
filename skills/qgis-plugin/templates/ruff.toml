@@ -4,8 +4,9 @@
 # them in extend-ignore is an error. flake8 remains authoritative (setup.cfg).
 #
 # Pin ruff to the same version your CI uses, or `ruff format --check` will
-# disagree between your machine and CI:
-#   uvx --from ruff==0.15.19 ruff format .
+# disagree between your machine and CI. The CI value lives in ONE place -
+# RUFF_VERSION at the top of templates/release.yml - so match that:
+#   uvx --from ruff==<RUFF_VERSION from release.yml> ruff format .
 
 line-length = 120
 preview = true

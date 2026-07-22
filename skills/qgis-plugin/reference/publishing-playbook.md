@@ -255,10 +255,11 @@ as it can: see [`../templates/setup.cfg`](../templates/setup.cfg) (flake8, autho
 [`../templates/ruff.toml`](../templates/ruff.toml) (the fast local mirror).
 
 **Pin ruff to exactly what CI pins.** A newer local ruff formats differently and fails CI's
-`ruff format --check`:
+`ruff format --check`. Keep the version in exactly one place - `RUFF_VERSION` at the top of
+[`../templates/release.yml`](../templates/release.yml) - and match it locally:
 
 ```bash
-uvx --from ruff==<the-version-CI-uses> ruff format .
+uvx --from ruff==<RUFF_VERSION from release.yml> ruff format .
 ```
 
 Bulk-fix unused imports with `autoflake` - but it will happily delete a **side-effect star import**
