@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-22
+
 ### Added
 - `.github/workflows/release.yml` — this repository's own release automation. On a `v*` tag it
   runs the gates, refuses to proceed unless the tag agrees with `marketplace.json` and
@@ -21,10 +23,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Changed
 - Bumped the pinned GitHub Actions in both the repo's own workflow and
-  `templates/release.yml` (`checkout` v4 to v7, `setup-python` v5 to v7, `setup-uv` v5 to v9).
-  The v4/v5 pins target Node 20, which GitHub has deprecated and now force-runs on Node 24 —
-  a warning the template would otherwise propagate to everyone who copies it. Also disabled
-  uv's cache in both, since with no lockfile to key on it would never invalidate.
+  `templates/release.yml` (`checkout` v4 to v7, `setup-python` v5 to v7, `setup-uv` v5 to the
+  exact pin v9.0.0). The old v4/v5 pins target Node 20, which GitHub has deprecated and now
+  force-runs on Node 24 — a warning the template would otherwise propagate to everyone who
+  copies it. `setup-uv` is pinned exactly because it publishes no floating major tag past v7, so
+  `@v9` does not resolve. Also disabled uv's cache in both, since with no lockfile to key on it
+  would never invalidate.
 
 ## [1.0.1] - 2026-07-22
 
