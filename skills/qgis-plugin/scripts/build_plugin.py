@@ -203,12 +203,8 @@ def verify(out: Path, plugin: str, names: list, want: list,
     hits = [n for n in names if rx.search(n)]
     if hits:
         raise BuildError(
-            "forbidden entries in the zip (cache / VCS / generated / archive / shell script):\n  "
-            + "\n  ".join(hits)
-            + "\n       Shell scripts are flagged by the plugins.qgis.org security scanner. Put\n"
-              "       installer guidance in the README and link out with QDesktopServices.openUrl\n"
-              "       instead. If you have a reviewed reason to ship one, set\n"
-              "       ALLOW_SHELL_SCRIPTS=1 in the manifest."
+            "forbidden entries in the zip:\n"
+            + "\n".join(f"  {n}\n      -> {forbidden_reason(n)}" for n in hits)
         )
 
     size = out.stat().st_size
@@ -216,6 +212,32 @@ def verify(out: Path, plugin: str, names: list, want: list,
         raise BuildError(
             f"zip is {size // 1048576} MB - plugins.qgis.org limits packages to 20 MB"
         )
+
+
+def forbidden_reason(name: str) -> str:
+    """Which packaging rule a forbidden zip entry breaks (same wording as build_plugin.sh)."""
+    low = name.lower()
+    base = low.rsplit("/", 1)[-1]  # same match as FORBIDDEN_BASE: any name ending resources.py
+    if any(k in low for k in ("__pycache__", ".ruff_cache", "__macosx")) or low.endswith((".pyc", ".pyo")):
+        return "cache or bytecode - strip it (it should never be in DIRS/FILES output)"
+    if ".git/" in low:
+        return "version-control data - build from a clean tree"
+    if base.endswith("resources.py"):
+        return (
+            "plugins.qgis.org bans files named resources.py (compiled Qt resources), even a\n"
+            "            hand-written module - rename the module and load icons from file paths"
+        )
+    if "/docs/" in low:
+        return "docs/ belongs in the repo, not the plugin zip"
+    if low.endswith(".sh"):
+        return (
+            "shell script - flagged by the plugins.qgis.org security scanner; put installer\n"
+            "            guidance in the README and link out with QDesktopServices.openUrl (or set\n"
+            "            ALLOW_SHELL_SCRIPTS=1 in the manifest after review)"
+        )
+    if low.endswith((".tar.gz", ".tgz", ".rar", ".7z")):
+        return "nested archive - plugins.qgis.org rejects archives in the zip"
+    return "matches FORBIDDEN_EXTRA in the manifest"
 
 
 def read_version(root: Path) -> str:

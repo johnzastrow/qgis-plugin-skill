@@ -26,7 +26,8 @@ skills/qgis-plugin/
 ├── SKILL.md                            operational index; golden rules and quick-reference tables
 ├── reference/
 │   ├── dock-crash-pitfalls.md          the segfault class, with a diagnostic method
-│   └── publishing-playbook.md          end-to-end: metadata, packaging, gates, Qt6, release
+│   ├── publishing-playbook.md          end-to-end: metadata, packaging, gates, Qt6, release
+│   └── qgis4-api-notes.md              PyQGIS 4 API changes and headless-rendering crashers
 ├── scripts/
 │   ├── build_plugin.sh                 self-verifying zip builder (bash + zip)
 │   ├── build_plugin.py                 same build, Python stdlib only (Windows / Git Bash)

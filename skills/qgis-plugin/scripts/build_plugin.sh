@@ -129,11 +129,29 @@ if [ "${ALLOW_SHELL_SCRIPTS:-0}" != "1" ]; then
 fi
 [ -n "$FORBIDDEN_EXTRA" ] && FORBIDDEN="$FORBIDDEN|$FORBIDDEN_EXTRA"
 HITS="$(printf '%s\n' "$LISTING" | grep -iE -- "$FORBIDDEN" || true)"
-[ -z "$HITS" ] || die "forbidden entries in the zip (cache / VCS / generated / archive / shell script):
-$HITS
-       Shell scripts are flagged by the plugins.qgis.org security scanner. Put installer
-       guidance in the README and link out with QDesktopServices.openUrl instead. If you
-       have a reviewed reason to ship one, set ALLOW_SHELL_SCRIPTS=1 in the manifest."
+if [ -n "$HITS" ]; then
+  # Name the rule each entry breaks, so the fix is obvious.
+  REASONS="$(printf '%s\n' "$HITS" | while IFS= read -r hit; do
+    lc="$(printf '%s' "$hit" | tr '[:upper:]' '[:lower:]')"  # grep -i matched case-insensitively
+    case "$lc" in
+      *__pycache__*|*.pyc|*.pyo|*.ruff_cache*|*__MACOSX*)
+        why="cache or bytecode - strip it (it should never be in DIRS/FILES output)" ;;
+      *.git/*) why="version-control data - build from a clean tree" ;;
+      *resources.py)
+        why="plugins.qgis.org bans files named resources.py (compiled Qt resources), even a
+            hand-written module - rename the module and load icons from file paths" ;;
+      */docs/*) why="docs/ belongs in the repo, not the plugin zip" ;;
+      *.sh) why="shell script - flagged by the plugins.qgis.org security scanner; put installer
+            guidance in the README and link out with QDesktopServices.openUrl (or set
+            ALLOW_SHELL_SCRIPTS=1 in the manifest after review)" ;;
+      *.tar.gz|*.tgz|*.rar|*.7z) why="nested archive - plugins.qgis.org rejects archives in the zip" ;;
+      *) why="matches FORBIDDEN_EXTRA in the manifest" ;;
+    esac
+    printf '  %s\n      -> %s\n' "$hit" "$why"
+  done)"
+  die "forbidden entries in the zip:
+$REASONS"
+fi
 
 SIZE_B="$(wc -c < "$OUT" | tr -d ' ')"
 [ "$SIZE_B" -lt 20971520 ] || die "zip is $((SIZE_B/1048576)) MB - plugins.qgis.org limits packages to 20 MB"

@@ -452,3 +452,13 @@ From the [plugin repository guidelines](https://plugins.qgis.org/publish/):
 - **Stale `__version__`** in a source file while `metadata.txt` moved on.
 - **Bloated `changelog=`** in metadata.txt.
 - **`set -o pipefail` plus `grep -q`** false failures in build scripts - capture to a variable first.
+- **Build piped into `tail`** - the pipeline reports `tail`'s status, so a failed build looks
+  clean and the previous zip gets tested or shipped. Check the build's own exit code.
+- **A module named `resources.py`** (even hand-written) - rejected by the resources ban, which
+  matches by file name. Rename it.
+- **Atomic writes leave files owner-only.** `tempfile.mkstemp` creates mode 600, and `os.replace`
+  keeps that mode, so reports or exports a plugin writes this way are unreadable to other users
+  and tools that expect normal files. `os.chmod(tmp, 0o666 & ~umask)` before the rename (read the
+  umask from `/proc/self/status` on Linux, or set and restore it with `os.umask`).
+- **Fake credentials in tests** flagged by detect-secrets - add `# pragma: allowlist secret` to
+  each such line.

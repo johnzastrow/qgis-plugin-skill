@@ -133,6 +133,10 @@ python3 -m unittest test.test_dock_qgis -v
 Find the right interpreter and paths for your system:
 - **Linux**: `qgis --version`, then use the `python3.X` that QGIS was built against; the QGIS python
   dir is usually `/usr/share/qgis/python`.
+  With a venv or pyenv active, `python3` is the wrong interpreter: run
+  `PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen /usr/bin/python3 -I ...` (`-I` also keeps user
+  site-packages and the current directory off `sys.path`) and add `/usr/share/qgis/python` to
+  `sys.path` in the test bootstrap or conftest.
 - **Windows**: skip PYTHONPATH entirely and run `"C:\OSGeo4W\bin\python-qgis.bat" -m unittest ...`,
   which sets the full environment for you.
 - **macOS**: use the Python bundled inside `QGIS.app`.

@@ -116,6 +116,32 @@ reject "nonexistent FILES entry" 'PLUGIN="P"
 FILES=(__init__.py metadata.txt LICENSE ghost.py)
 VERIFY=(LICENSE)'
 
+echo "== rejection messages name the rule that was broken =="
+printf '# a hand-written module, not compiled Qt resources\n' > "$FIX/resources.py"
+conf 'PLUGIN="P"
+FILES=(__init__.py metadata.txt LICENSE resources.py)
+VERIFY=(LICENSE)'
+msh=$(bash "$SCRIPTS/build_plugin.sh" -c "$FIX/plugin_build.conf" -o "$WORK/res.zip" 2>&1)
+mpy=$(python3 "$SCRIPTS/build_plugin.py" -c "$FIX/plugin_build.conf" -o "$WORK/respy.zip" 2>&1)
+for pair in "sh:$msh" "py:$mpy"; do
+  tool=${pair%%:*}; msg=${pair#*:}
+  if printf '%s' "$msg" | grep -q "bans files named resources.py" \
+     && ! printf '%s' "$msg" | grep -q "shell script"; then
+    ok "$tool: resources.py rejected with the resources.py reason (not the shell-script one)"
+  else
+    bad "$tool: resources.py rejected with the resources.py reason" "$msg"
+  fi
+done
+rm -f "$FIX/resources.py"
+conf 'PLUGIN="P"
+FILES=(__init__.py metadata.txt LICENSE install_tool.sh)
+VERIFY=(LICENSE)'
+msh=$(bash "$SCRIPTS/build_plugin.sh" -c "$FIX/plugin_build.conf" -o "$WORK/s.zip" 2>&1)
+mpy=$(python3 "$SCRIPTS/build_plugin.py" -c "$FIX/plugin_build.conf" -o "$WORK/spy.zip" 2>&1)
+printf '%s' "$msh" | grep -q "security scanner" && printf '%s' "$mpy" | grep -q "security scanner" \
+  && ok "both builders explain a rejected *.sh" \
+  || bad "both builders explain a rejected *.sh" "sh: $msh | py: $mpy"
+
 echo "== documented override still works =="
 conf 'PLUGIN="P"
 FILES=(__init__.py metadata.txt LICENSE install_tool.sh)

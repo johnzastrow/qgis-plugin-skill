@@ -23,6 +23,10 @@ drop-in project files in `templates/`.
   gates, Qt6, testing under QGIS Python, release). Read it for anything below in depth.
 - **`reference/dock-crash-pitfalls.md`** - the runtime/UI crash pitfalls (READ THIS before touching
   a dock widget or anything that reacts to QGIS layer signals).
+- **`reference/qgis4-api-notes.md`** - PyQGIS 4 API changes and headless-rendering crashers found
+  in practice (layout chart segfault, flag inversion, `QDomDocument.setContent` tuple, reading a
+  project without opening its data, PDF without QtWebEngine). Read it before code that reads
+  projects, styles or layouts, or renders anything headless.
 - **`scripts/build_plugin.sh`** - self-verifying zip builder, driven by a manifest.
 - **`scripts/build_plugin.py`** - same build with the Python stdlib only, for Windows/Git Bash
   (no `zip` binary) or when you would rather the manifest be parsed than executed.
@@ -74,6 +78,8 @@ The highest-value, hardest-won knowledge. Quick reference:
 | Crash **during plugin reload / dock teardown** | `showEvent`/handler runs on a half-destroyed widget | avoid `showEvent`-driven heavy work; guard with `hasattr`; prefer explicit refresh |
 | Segfault iterating a **categorized/graduated** renderer | `cat.symbol()` returns a pointer owned by a temporary container that is then GC'd (use-after-free) | `.clone()` each symbol while the container is alive |
 | Wrong `[Point]/[Line]/[Polygon]` labels on QGIS 4 | `geometryType()` returns an **enum** (PyQt6), not an int | `int(layer.geometryType())` or compare the enum |
+| Segfault **exporting a layout** headless | A chart item (`QgsLayoutItemChart`) whose source layer is missing or not loaded | Check every visible chart's `sourceLayer()` first; skip the export if any is invalid (`reference/qgis4-api-notes.md`) |
+| Layer created in a script/fixture **vanishes or crashes** | Layer added only to the layer tree, then garbage-collected | `project.addMapLayer(layer, False)` before `group.addLayer(layer)` |
 | Labels **ignore QGIS placement** on QGIS 4 | A removed attribute read via `getattr(obj, 'x', default)` **silently returns the default** | Use the relocated API; audit every `getattr(<qgis obj>, 'x', default)` for a QGIS-4 rename that a getattr hides |
 
 **Local-deploy test loop:**
@@ -96,6 +102,16 @@ so "the call returned" *is* the assertion. **Gate on an env var** (`<PLUGIN>_QGI
 `import qgis` - the conftest mock makes the import succeed. Full recipe plus the QGIS-Python
 environment in `reference/dock-crash-pitfalls.md` ("Local testing").
 
+Linux one-liner that avoids the two usual traps (an active venv's python shadowing the system
+one QGIS was built for, and user site-packages or the current directory leaking imports):
+```bash
+PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen /usr/bin/python3 -I script.py
+# inside script.py: sys.path.insert(0, "/usr/share/qgis/python") before importing qgis
+```
+**Generate fixtures with a script** (`tests/fixtures/make_fixtures.py`) that builds the projects,
+GeoPackages and rasters under QGIS's Python, rather than committing hand-made `.qgz` files: the
+fixtures stay reviewable, reproducible on a new QGIS, and free of absolute paths.
+
 ## Packaging & build - `reference/publishing-playbook.md` section 2
 
 - Ship an **explicit file list** (every `.py`, every imported subpackage, `metadata.txt`, icon,
@@ -106,6 +122,13 @@ environment in `reference/dock-crash-pitfalls.md` ("Local testing").
   `resources.py`/`pyrcc5` - plugins.qgis.org bans generated resource files.
 - Declare it once in `plugin_build.conf`; `build_plugin.sh` and `build_plugin.py` both read it, so
   the local build and CI cannot drift apart.
+- **The `resources.py` ban is by file name, anywhere in the zip** - a hand-written module called
+  `resources.py` (or `*resources.py`) is rejected too. Name modules for what they hold
+  (`fonts_files.py`). A unit test that applies the same pattern to your source tree catches it
+  before the build does.
+- **Never pipe the build into `tail`/`head` and trust it.** The pipeline's status is the last
+  command's, so a failed build "succeeds" and you ship or test the previous zip. Run it bare, or
+  `set -o pipefail`, and check the exit code before using the zip.
 
 ## The plugins.qgis.org gates - `reference/publishing-playbook.md` section 4
 
@@ -118,9 +141,18 @@ uv run --no-project --with flake8 flake8 .          # authoritative style gate
 ```
 - Iterate with `ruff check --fix` but **verify with `flake8`** (ruff lacks some E12x/W50x).
 - Common fixes: B608 SQL to allowlist + `# nosec B608`; B112 try/except/continue to `# nosec B112`
-  (use the *correct* code - B110 is pass, B112 is continue); XXE to `defusedxml`; bare except to
+  (use the *correct* code - B110 is pass, B112 is continue); XXE to `QDomDocument` (inside QGIS) or `defusedxml`; bare except to
   `except Exception:`.
 - **`.ruff_cache/CACHEDIR.TAG`** is a false-positive secret: gitignore it and delete caches before scanning.
+- **Intentional fake credentials in tests** (redaction tests need them): mark the line
+  `# pragma: allowlist secret` so detect-secrets skips it. Never allowlist a real value.
+- **Bandit B105 on lookup tables** (`{"password": ...}` dict keys read as hardcoded passwords):
+  write the table value-first and invert it with a helper (`{kind: (names...)}` to `{name: kind}`)
+  rather than scattering `# nosec`.
+- **XML from a project or style file is untrusted.** Bandit flags `xml.etree`/`minidom` (B314/B318);
+  inside QGIS use `QDomDocument` (bounded entity expansion, no external entities) instead of
+  adding `defusedxml` as a dependency. Its `setContent` returns a tuple on QGIS 4 - a tuple is
+  always truthy, so test `result[0]`.
 - **Never name a make target `secrets:`** - detect-secrets reads it as a secret keyword and flags the
   recipe lines. The template's target is `leak-scan`. And `detect-secrets scan` **exits 0 even with
   findings**; a gate must check that the JSON `results` object is empty. Exclude `.git/`
