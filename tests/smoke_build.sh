@@ -177,5 +177,12 @@ for f in Makefile release.yml; do
     || bad "$f secrets scan excludes .git/" ".git/FETCH_HEAD is a false positive in CI"
 done
 
+echo "== lint matches CI =="
+grep -q 'ruff format --check' "$TPL/Makefile" \
+  && ok "Makefile lint runs ruff format --check (as CI does)" \
+  || bad "Makefile lint runs ruff format --check (as CI does)"
+grep -qE 'ruff==\$\(RUFF_VERSION\)' "$TPL/Makefile" \
+  && ok "Makefile pins ruff" || bad "Makefile pins ruff" "an unpinned ruff formats differently from CI"
+
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

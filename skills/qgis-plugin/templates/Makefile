@@ -23,8 +23,13 @@ check: lint style security leak-scan test
 	@echo "all gates passed"
 
 # ruff is fast and fixes; flake8 is the authoritative gate (see below).
+# Pin ruff to the same version as release.yml (RUFF_VERSION) and run the same two commands,
+# so a local pass means a CI pass. An unpinned local ruff, or a missing format check, lets a
+# formatting change (including Python code blocks in Markdown) through to a red CI.
+RUFF_VERSION ?= 0.15.19
 lint:
-	uv run --no-project --with ruff ruff check .
+	uv run --no-project --with "ruff==$(RUFF_VERSION)" ruff check .
+	uv run --no-project --with "ruff==$(RUFF_VERSION)" ruff format --check .
 
 # flake8 is what plugins.qgis.org runs. ruff does not implement the pycodestyle
 # continuation-indent checks (E12x) or W503/W504, so a clean ruff is NOT proof.

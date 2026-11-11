@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Fixed
+- `templates/Makefile`: `make lint` ran an unpinned `ruff check` only, while CI runs a pinned
+  `ruff check` and `ruff format --check`. A formatting change (here, a Python code block in the
+  README) passed locally and failed CI. The target now pins `RUFF_VERSION` and runs both.
+
 ### Added
 - `reference/qgis4-api-notes.md`: QGIS writes its own DOCTYPE (a blanket DOCTYPE ban rejects
   every project); project settings are `<properties name="X">` elements (a `<Macros>` tag search
