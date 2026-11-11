@@ -58,7 +58,9 @@ jobs:
       - name: Secrets
         run: |
           rm -rf .ruff_cache .pytest_cache
-          uv run --no-project --with detect-secrets detect-secrets scan --all-files
+          # detect-secrets exits 0 even with findings: fail on a non-empty result.
+          uv run --no-project --with detect-secrets detect-secrets scan --all-files \
+            | python -c "import json,sys; r=json.load(sys.stdin)['results']; print(json.dumps(r, indent=2)); sys.exit(1 if r else 0)"
 
       # Pure-Python tests only. Anything importing qgis must run under QGIS's
       # own Python and does not belong in this job.

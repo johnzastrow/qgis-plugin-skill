@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "A battle-tested skill for authoring, debugging, packaging and publishing QGIS Python plugins.",
-    "version": "1.0.2"
+    "version": "1.0.3"
   },
   "plugins": [
     {

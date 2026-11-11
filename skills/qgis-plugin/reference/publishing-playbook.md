@@ -207,7 +207,7 @@ locally first, no install needed, via `uv`:
 # Security (Bandit) - aim for 0 HIGH/MEDIUM; HIGH/critical is a hard block
 uv run --no-project --with bandit bandit -r . -x ./test,./tests,./.git,./help,./docs
 
-# Secrets - must be 0
+# Secrets - must be 0. The command exits 0 even with findings: read "results" (must be {}).
 uv run --no-project --with detect-secrets detect-secrets scan --all-files
 
 # Style/lint - the authoritative pre-publish check
@@ -225,7 +225,8 @@ Or just `make check`, which runs all of these plus the unit tests.
 | **B404 / B603 / B607** subprocess | Shelling out (e.g. `df` for a mount point) with a partial path | Best: remove it. The Unix mount point is pure-Python - walk up with `os.path.ismount()`. Otherwise `# nosec` with a justification |
 | **B310** urlopen scheme | `urllib.request.urlopen(url)` - bandit cannot prove `url` is not `file:` or a custom scheme | If the URL is a **fixed `https://` constant**, it is a reviewed non-issue: `# nosec B310 - fixed https URL`. If it is user- or config-derived, validate the scheme is `https` first. Ruff's equivalent is `S310`; a line can carry both: `# noqa: S310  # nosec B310`. Note QGIS's guideline (section 10) prefers `QgsNetworkAccessManager` over `urllib` - a zero-dependency plugin may justify `urllib` in the `about` text, but reviewers do look for it |
 | **B110** try/except/pass, **B112** try/except/continue | Silently swallowed exceptions | Low severity, rarely blocks. Prefer logging the exception; at minimum use `except Exception:`, not a bare `except:`. Use the *correct* code - B110 is `pass`, B112 is `continue` |
-| **Secret: "Hex High Entropy String" in `.ruff_cache/CACHEDIR.TAG`** | A **false positive** - the ruff cache's magic signature | `.gitignore` the caches (`.ruff_cache/`, `__pycache__/`) and `rm -rf .ruff_cache` before scanning. `make secrets` does this for you |
+| **Secret: "Hex High Entropy String" in `.ruff_cache/CACHEDIR.TAG`** | A **false positive** - the ruff cache's magic signature | `.gitignore` the caches (`.ruff_cache/`, `__pycache__/`) and `rm -rf .ruff_cache` before scanning. `make leak-scan` does this for you |
+| **Secret: "Secret Keyword" in `Makefile`** | A **false positive** - a make target named `secrets:` reads as a `secret: value` pair, so the recipe lines under it are flagged | Name the target something else (the template uses `leak-scan`) |
 
 **Shell-script installers are flagged.** A `*.sh` that downloads a binary and moves it into a system
 path is exactly the pattern the security scanner catches, and it is a realistic cause of rejection.

@@ -17,9 +17,9 @@ EXCLUDE   ?= .git,test,tests,help,i18n,__pycache__,docs,resources.py
 BANDIT_X  ?= ./test,./tests,./.git,./help,./docs
 
 .DEFAULT_GOAL := check
-.PHONY: check lint style security secrets test build deploy tag clean
+.PHONY: check lint style security leak-scan test build deploy tag clean
 
-check: lint style security secrets test
+check: lint style security leak-scan test
 	@echo "all gates passed"
 
 # ruff is fast and fixes; flake8 is the authoritative gate (see below).
@@ -35,10 +35,16 @@ style:
 security:
 	uv run --no-project --with bandit bandit -r . -x $(BANDIT_X)
 
+# Secrets scan. Named leak-scan, NOT "secrets": detect-secrets reads a `secrets:`
+# make target as a secret keyword and flags the recipe lines under it, so a
+# target with that name makes the scan fail on this very Makefile.
 # Delete caches first: .ruff_cache/CACHEDIR.TAG trips a false "high entropy string".
-secrets:
+# `detect-secrets scan` exits 0 even when it finds something, so the JSON result
+# is checked here and any finding fails the gate.
+leak-scan:
 	rm -rf .ruff_cache .pytest_cache
-	uv run --no-project --with detect-secrets detect-secrets scan --all-files
+	uv run --no-project --with detect-secrets detect-secrets scan --all-files \
+	  | python3 -c "import json,sys; r=json.load(sys.stdin)['results']; print(json.dumps(r, indent=2) if r else 'no findings'); sys.exit(1 if r else 0)"
 
 test:
 	python -m pytest $(UNIT_TEST) -q || python -m unittest discover -s $(UNIT_TEST) -v

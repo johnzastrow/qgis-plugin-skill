@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-11
+
+### Fixed
+- `templates/Makefile`: the secrets gate failed on the template itself. detect-secrets reads a
+  make target named `secrets:` as a secret keyword and flags the recipe lines under it (two
+  "Secret Keyword" findings in every plugin repo that copied the template). The target is now
+  `leak-scan` (`make check` runs it).
+- `templates/Makefile` and `templates/release.yml`: the secrets step could never fail, because
+  `detect-secrets scan` exits 0 even when it finds something. Both now parse the JSON and fail
+  on a non-empty `results`.
+- `SKILL.md` and `reference/publishing-playbook.md`: document both pitfalls; `make secrets`
+  references updated to `make leak-scan`.
+
+### Added
+- `tests/smoke_build.sh`: regression checks that the Makefile template has no `secrets:` target
+  and that both template gates check the detect-secrets results.
+
 ## [1.0.2] - 2026-07-22
 
 ### Added

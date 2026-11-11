@@ -134,5 +134,19 @@ iso="$WORK/iso"; mkdir -p "$iso"
 ( cd "$iso" && bash "$SCRIPTS/build_plugin.sh" -c "$iso/nope.conf" >/dev/null 2>&1 )
 [ $? -ne 0 ] && ok "missing manifest is an error" || bad "missing manifest is an error"
 
+echo "== secrets gate in the templates =="
+TPL="$ROOT/skills/qgis-plugin/templates"
+# A make target named `secrets:` is read by detect-secrets as a secret keyword,
+# so the template's own scan would flag the template. Keep it renamed.
+grep -qE '^secrets:' "$TPL/Makefile" \
+  && bad "Makefile has no 'secrets:' target (detect-secrets false positive)" \
+  || ok "Makefile has no 'secrets:' target (detect-secrets false positive)"
+# detect-secrets exits 0 even with findings: both gates must check the results.
+for f in Makefile release.yml; do
+  grep -q "\['results'\]" "$TPL/$f" \
+    && ok "$f secrets gate fails on findings" \
+    || bad "$f secrets gate fails on findings" "no check of the detect-secrets 'results' object"
+done
+
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
