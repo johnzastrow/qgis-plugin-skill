@@ -146,6 +146,9 @@ for f in Makefile release.yml; do
   grep -q "\['results'\]" "$TPL/$f" \
     && ok "$f secrets gate fails on findings" \
     || bad "$f secrets gate fails on findings" "no check of the detect-secrets 'results' object"
+  grep -qF -- "--exclude-files '^\.git/'" "$TPL/$f" \
+    && ok "$f secrets scan excludes .git/" \
+    || bad "$f secrets scan excludes .git/" ".git/FETCH_HEAD is a false positive in CI"
 done
 
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"

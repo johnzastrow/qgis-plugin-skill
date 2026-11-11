@@ -16,12 +16,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - `templates/Makefile` and `templates/release.yml`: the secrets step could never fail, because
   `detect-secrets scan` exits 0 even when it finds something. Both now parse the JSON and fail
   on a non-empty `results`.
-- `SKILL.md` and `reference/publishing-playbook.md`: document both pitfalls; `make secrets`
+- `templates/Makefile` and `templates/release.yml`: the secrets scan now excludes `.git/`. With
+  `--all-files` it scanned `.git/FETCH_HEAD`, whose quoted commit hash is a "Hex High Entropy
+  String" on every CI checkout. The old gate hid this because it could never fail.
+- `SKILL.md` and `reference/publishing-playbook.md`: document these pitfalls; `make secrets`
   references updated to `make leak-scan`.
 
 ### Added
 - `tests/smoke_build.sh`: regression checks that the Makefile template has no `secrets:` target
-  and that both template gates check the detect-secrets results.
+  and that both template gates check the detect-secrets results and exclude `.git/`.
 
 ## [1.0.2] - 2026-07-22
 

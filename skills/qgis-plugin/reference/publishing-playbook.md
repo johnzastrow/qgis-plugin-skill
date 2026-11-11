@@ -208,7 +208,7 @@ locally first, no install needed, via `uv`:
 uv run --no-project --with bandit bandit -r . -x ./test,./tests,./.git,./help,./docs
 
 # Secrets - must be 0. The command exits 0 even with findings: read "results" (must be {}).
-uv run --no-project --with detect-secrets detect-secrets scan --all-files
+uv run --no-project --with detect-secrets detect-secrets scan --all-files --exclude-files '^\.git/'
 
 # Style/lint - the authoritative pre-publish check
 uv run --no-project --with flake8 flake8 .
@@ -227,6 +227,7 @@ Or just `make check`, which runs all of these plus the unit tests.
 | **B110** try/except/pass, **B112** try/except/continue | Silently swallowed exceptions | Low severity, rarely blocks. Prefer logging the exception; at minimum use `except Exception:`, not a bare `except:`. Use the *correct* code - B110 is `pass`, B112 is `continue` |
 | **Secret: "Hex High Entropy String" in `.ruff_cache/CACHEDIR.TAG`** | A **false positive** - the ruff cache's magic signature | `.gitignore` the caches (`.ruff_cache/`, `__pycache__/`) and `rm -rf .ruff_cache` before scanning. `make leak-scan` does this for you |
 | **Secret: "Secret Keyword" in `Makefile`** | A **false positive** - a make target named `secrets:` reads as a `secret: value` pair, so the recipe lines under it are flagged | Name the target something else (the template uses `leak-scan`) |
+| **Secret: "Hex High Entropy String" in `.git/FETCH_HEAD`** (CI only) | A **false positive** - `--all-files` includes `.git/`, and the checkout's `FETCH_HEAD` holds a quoted commit hash | `--exclude-files '^\.git/'` (the templates do this) |
 
 **Shell-script installers are flagged.** A `*.sh` that downloads a binary and moves it into a system
 path is exactly the pattern the security scanner catches, and it is a realistic cause of rejection.

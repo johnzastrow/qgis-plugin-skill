@@ -112,7 +112,7 @@ environment in `reference/dock-crash-pitfalls.md` ("Local testing").
 Run locally with uv before uploading. **HIGH/critical Bandit findings and any secret are a hard block:**
 ```bash
 uv run --no-project --with bandit bandit -r . -x ./test,./tests,./docs
-uv run --no-project --with detect-secrets detect-secrets scan --all-files   # exits 0 even on findings:
+uv run --no-project --with detect-secrets detect-secrets scan --all-files --exclude-files '^\.git/'   # exits 0 even on findings:
                                                     # read "results" (must be {}); `make leak-scan` checks it
 uv run --no-project --with flake8 flake8 .          # authoritative style gate
 ```
@@ -123,7 +123,9 @@ uv run --no-project --with flake8 flake8 .          # authoritative style gate
 - **`.ruff_cache/CACHEDIR.TAG`** is a false-positive secret: gitignore it and delete caches before scanning.
 - **Never name a make target `secrets:`** - detect-secrets reads it as a secret keyword and flags the
   recipe lines. The template's target is `leak-scan`. And `detect-secrets scan` **exits 0 even with
-  findings**; a gate must check that the JSON `results` object is empty.
+  findings**; a gate must check that the JSON `results` object is empty. Exclude `.git/`
+  (`--exclude-files '^\.git/'`): in CI `.git/FETCH_HEAD` holds a quoted commit hash that is
+  reported as a "Hex High Entropy String".
 - **The security scanner flags shell-script installers.** A `*.sh` that downloads a binary and moves it
   into a system path is exactly the pattern that gets a plugin rejected. Do not ship installer shell
   scripts - put the guidance in the README and give an in-app link (`QDesktopServices.openUrl` to the
