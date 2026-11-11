@@ -97,6 +97,21 @@ deprecated calls for a while.
   loading) instead of `xml.etree`/`minidom`, which Bandit flags (B314/B318) and which need
   `defusedxml` to be safe. `QDomDocument` avoids the extra dependency, which a plugin cannot
   easily ship.
+- **QGIS writes a DOCTYPE**: `<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>`. A filter
+  that refuses every DOCTYPE (a common XXE defence) rejects every real project. Allow exactly that
+  form (no internal subset, so no entities) and refuse any other DOCTYPE or `<!ENTITY`.
+- **Project settings are `<properties name="X">`, not `<X>`.** In QGIS 4 the project property tree
+  is written as nested `properties` elements named by attribute (`<properties name="Macros">`,
+  `<properties name="Variables">`). Code that looks for a `<Macros>` tag finds nothing - which,
+  for a macro filter, means it silently lets macros through. Match on the `name` attribute (and
+  on the tag, for old projects).
+- **Variables are two parallel lists.** Project, layer and layout variables are stored as
+  `variableNames` and `variableValues` lists (`<value>` elements or `<Option value=...>`), so a
+  value never sits next to its name. A redactor that hides values by key name misses a
+  `service_token` variable; pair the lists by index.
+- **Attribute values can hold whole XML documents** (a label's `lineSymbol`, a `text_format`), as
+  escaped text. Scanning them as plain text finds false secrets (`pass="0"` in a symbol layer);
+  parse and process them as XML, and leave them untouched when nothing changed.
 - To redact secrets inside XML (style files, project XML), work on the parsed DOM (attribute
   values and text nodes), not with regexes over the serialised text: text-level redaction mangles
   attributes whose *name* happens to match a secret word (`pass="0"` in a symbol layer).

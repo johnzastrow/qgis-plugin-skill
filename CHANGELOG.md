@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- `reference/qgis4-api-notes.md`: QGIS writes its own DOCTYPE (a blanket DOCTYPE ban rejects
+  every project); project settings are `<properties name="X">` elements (a `<Macros>` tag search
+  finds nothing); variables are parallel name/value lists; attribute values can hold escaped XML.
+
 ## [1.1.0] - 2026-11-11
 
 Lessons from building a QGIS 4 plugin that reads whole projects headless (DocQGISProject).
