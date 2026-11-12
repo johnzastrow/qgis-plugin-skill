@@ -63,6 +63,25 @@ deprecated calls for a while.
 | `QgsRelation()` then `setReferencingLayer(...)` | `QgsRelation(QgsRelationContext(project))` | Without the context the relation stays invalid and is silently dropped by `relationManager().addRelation()` |
 | `QDomDocument.setContent(data)` returning `bool` | returns a **tuple** `(ok, message, line, column)` | `ok = r[0] if isinstance(r, tuple) else bool(r)`; a tuple is always truthy, so `if doc.setContent(...)` is a silent bug |
 
+## Item views (PyQt6 access rules)
+
+- `QAbstractListModel.columnCount()` and `.hasChildren()` are **private** in PyQt6: calling them on
+  a `QListWidget`'s model raises `TypeError`. Use one column for list models, and
+  `model.rowCount(index) > 0` instead of `hasChildren`.
+- `visualRect()` is **protected** on `QHeaderView` (and `indexFromItem()` on `QTreeWidget`):
+  `RuntimeError: no access to protected functions ... not created from Python`. A
+  `findChildren(QAbstractItemView)` sweep finds header views too; skip them.
+
+## PDF from QTextDocument
+
+- Qt writes **internal links** for `<a href="#id">` and **named destinations** for heading `id`s
+  into the PDF, also when you draw pages yourself with `drawContents` on a `QPdfWriter` painter
+  (for running headers and footers). A clickable table of contents needs nothing else.
+- `style="page-break-before:always"` on a block is honoured by `pageCount()` and the layout.
+- Page numbers for a contents list: lay out once with placeholder numbers of the same width,
+  read each anchor's page from `documentLayout().blockBoundingRect(block).top() // page_height`
+  (anchors are in the fragments' `charFormat().anchorNames()`), then set the real numbers.
+
 ## Layout map items
 
 - **Size first, then extent.** `item.attemptResize(QgsLayoutSize(...))` and only then

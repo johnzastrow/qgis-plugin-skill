@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+- `reference/qgis4-api-notes.md`: PyQt6 private/protected item-view methods; internal links,
+  named destinations and page breaks in PDFs from QTextDocument.
+
 ### Fixed
 - `templates/Makefile`: `make lint` ran an unpinned `ruff check` only, while CI runs a pinned
   `ruff check` and `ruff format --check`. A formatting change (here, a Python code block in the
